@@ -1,0 +1,43 @@
+variables:
+  buildConfiguration: 'Release'
+
+stages:
+# Build your app(s) in this stage
+- stage: Build
+  jobs:
+    - job: Build
+      pool:
+        vmImage: 'Ubuntu 18.04'
+      steps:
+      - template: pipelines.build.yml
+
+# Deploy the environment and app(s) here
+- stage: Deploy
+  dependsOn:
+  - Build
+  variables:
+  # Configure resource group name to which to deploy here
+  - name: ResourceGroupName
+    value: groupx-map-dev
+  # Sql needs to be created with a password. Hardcoding login information here
+  # is naive and insecure, but the simplest solution
+  # Some ways to improve this:
+  # - Variable groups and manage the password in DevOps (a little better)
+  #   https://docs.microsoft.com/en-us/azure/devops/pipelines/library/variable-groups?view=azure-devops&tabs=yaml
+  # - Allocate a Key Vault and put the secrets there (a lot better)
+  #   https://azure.microsoft.com/en-us/services/key-vault/
+  - name: SqlAdminLogin
+    value: Username1234
+  - name: SqlAdminPassword
+    value: Password1234!
+  jobs:
+  - deployment: deploy_to_azure
+    displayName: deploy development
+    pool:
+      vmImage: 'Ubuntu 18.04'
+    environment: dev
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - template: ./pipelines.deploy.yml

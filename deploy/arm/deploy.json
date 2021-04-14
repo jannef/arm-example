@@ -1,0 +1,129 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "resourcePrefix": {
+      "type": "string"
+    },
+    "sqlLogin": {
+      "type": "securestring"
+    },
+    "sqlPassword": {
+      "type": "securestring"
+    },
+    "aspSku": {
+      "type": "string",
+      "defaultValue": "B1",
+      "metadata": {
+        "description": "The SKU of App Service Plan"
+      },
+      "allowedValues": [
+        "F1",
+        "B1",
+        "B2"
+      ]
+    },
+    "dbSku": {
+      "type": "string",
+      "defaultValue": "Basic",
+      "metadata": {
+        "description": "The SKU of SQL Database"
+      },
+      "allowedValues": [
+        "Free",
+        "Basic",
+        "S0"
+      ]
+    }
+  },
+  "variables": {
+    "wappName": "[concat(parameters('resourcePrefix'), '-wapp')]",
+    "aspName": "[concat(parameters('resourcePrefix'), '-asplan')]",
+    "sqlServerName": "[concat(parameters('resourcePrefix'), '-dbserver')]",
+    "databaseName": "[concat(parameters('resourcePrefix'), '-db')]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Web/serverfarms",
+      "apiVersion": "2018-02-01",
+      "name": "[variables('aspName')]",
+      "location": "[resourceGroup().location]",
+      "sku": {
+        "name": "[parameters('aspSku')]"
+      },
+      "kind": "linux",
+      "properties": {
+        "reserved": true
+      }
+    },
+    {
+      "type": "Microsoft.Web/sites",
+      "apiVersion": "2018-02-01",
+      "name": "[variables('wappName')]",
+      "location": "[resourceGroup().location]",
+      "kind": "app,linux",
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/serverfarms', variables('aspName'))]"
+      ],
+      "properties": {
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('aspName'))]",
+        "alwaysOn": true,
+        "siteConfig": {
+          "appSettings": [
+            {
+              "name": "SettingsExample",
+              "value": "Hello Azure!"
+            },
+            {
+              "name": "DatabaseConnectionString",
+              "value": "[concat('Server=tcp:', variables('sqlServerName'), '.database.windows.net,1433;Initial Catalog=', variables('databaseName'), ';Persist Security Info=False;User ID=', parameters('sqlLogin'), ';Password=''', parameters('sqlPassword'), ''';MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;')]"
+            }
+          ]
+        }
+      },
+      "identity": {
+        "type": "SystemAssigned"
+      }
+    },
+    {
+      "name": "[variables('sqlServerName')]",
+      "type": "Microsoft.Sql/servers",
+      "apiVersion": "2014-04-01",
+      "location": "[resourceGroup().location]",
+      "tags": {},
+      "properties": {
+        "version": "12.0",
+        "administratorLogin": "[parameters('sqlLogin')]",
+        "administratorLoginPassword": "[parameters('sqlPassword')]"
+      },
+      "resources": [
+        {
+          "name": "[variables('databaseName')]",
+          "type": "databases",
+          "apiVersion": "2014-04-01",
+          "location": "[resourceGroup().location]",
+          "tags": {},
+          "properties": {
+            "collation": "Finnish_Swedish_CI_AS",
+            "requestedServiceObjectiveName": "[parameters('dbSku')]"
+          },
+          "dependsOn": [
+            "[variables('sqlServerName')]"
+          ]
+        },
+        {
+          "name": "allow-internal-azure-resources",
+          "type": "firewallRules",
+          "apiVersion": "2014-04-01",
+          "properties": {
+            "startIpAddress": "0.0.0.0",
+            "endIpAddress": "0.0.0.0"
+          },
+          "dependsOn": [
+            "[variables('sqlServerName')]"
+          ]
+        }
+      ]
+    }
+  ]
+}

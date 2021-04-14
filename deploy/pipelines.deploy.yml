@@ -1,0 +1,15 @@
+steps:
+- download: current
+  artifact: drop
+
+- task: AzureResourceGroupDeployment@2
+  displayName: incremental deployment
+  inputs:
+    azureSubscription: 'arm-subscription-scope'
+    resourceGroupName: $(ResourceGroupName)
+    mode: Incremental
+    csmFile: $(Pipeline.Workspace)/**/arm/deploy.json
+    overrideParameters: >-
+      -resourcePrefix "$(ResourceGroupName)"
+      -sqlLogin "$(SqlAdminLogin)"
+      -sqlPassword "$(SqlAdminPassword)"

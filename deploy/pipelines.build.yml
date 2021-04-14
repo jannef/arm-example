@@ -1,0 +1,15 @@
+steps:
+- checkout: self
+  persistCredentials: true
+
+- task: CopyFiles@2
+  displayName: Copy arm templates
+  inputs:
+    contents: '**/arm/*.json'
+    targetFolder: $(Build.ArtifactStagingDirectory)
+    cleanTargetFolder: false
+
+- task: PublishBuildArtifacts@1
+  inputs:
+    PathtoPublish: $(Build.ArtifactStagingDirectory)
+    ArtifactName: drop
